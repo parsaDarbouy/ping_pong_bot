@@ -1,0 +1,21 @@
+services:
+  ping-pong:
+    image: 121130813321.dkr.ecr.us-east-1.amazonaws.com/eth-ping-pong:latest
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: eth-ping-pong
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NETWORK=sepolia
+      - AWS_REGION=us-east-1
+    healthcheck:
+      test: ["CMD", "node", "scripts/healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - ./logs:/app/logs
