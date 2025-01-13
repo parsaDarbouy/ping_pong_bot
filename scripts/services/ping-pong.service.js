@@ -21,7 +21,7 @@ class PingPongService {
     console.log("Processing Ping at block:", blockNumber);
     console.log("Ping transaction hash:", txHash);
 
-    await dynamoDBService.storePingPongEvent(blockNumber, txHash, null, PING_PONG_STATUS.PENDING);
+    await dynamoDBService.storePingPongEvent(blockNumber, txHash, null, null, 0, PING_PONG_STATUS.PENDING);
     
     const backoff = (attempt) => {
       const jitter = Math.random() * 1000;
@@ -37,7 +37,12 @@ class PingPongService {
           // nonce: 185
           // gasPrice: 1
         });
+
         console.log(pongtx)
+
+        // store nonce.
+        await dynamoDBService.updatePong(blockNumber, pongtx.nonce, pongtx.gasPrice)
+        
         console.log("Pong transaction sent:", pongtx.hash);
         await pongtx.wait(1,60000); // 1 min timout
         console.log("Pong confirmed for transaction:", txHash);

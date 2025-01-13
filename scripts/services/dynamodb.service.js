@@ -8,13 +8,15 @@ class DynamoDBService {
     this.docClient = DynamoDBDocumentClient.from(client);
   }
 
-  async storePingPongEvent(blockNumber, pingTxHash, pongTxHash, status = PING_PONG_STATUS.PENDING) {
+  async storePingPongEvent(blockNumber, pingTxHash, pongTxHash, pongNonce, gasPrice, status = PING_PONG_STATUS.PENDING) {
     const params = {
       TableName: AWS_CONFIG.tableName,
       Item: {
         blockNumber,
         pingTxHash,
         pongTxHash,
+        pongNonce,
+        gasPrice,
         status,
         timestamp: new Date().toISOString(),
         lastUpdated: new Date().toISOString()
@@ -40,6 +42,16 @@ class DynamoDBService {
       UpdateExpression: "SET pongTxHash = :pongTxHash, #st = :status",
       ExpressionAttributeValues: { ":pongTxHash": pongTxHash, ":status": status },
       ExpressionAttributeNames: { "#st": "status" }
+    };
+    await this.docClient.send(new UpdateCommand(params));
+  }
+
+  async updatePong(blockNumber, pongNonce, gasPrice) {
+    const params = {
+      TableName: AWS_CONFIG.tableName,
+      Key: { blockNumber },
+      UpdateExpression: "SET pongNonce = :pongNonce , gasPrice = :gasPrice",
+      ExpressionAttributeValues: { ":pongNonce": pongNonce, ":gasPrice" : gasPrice },
     };
     await this.docClient.send(new UpdateCommand(params));
   }
