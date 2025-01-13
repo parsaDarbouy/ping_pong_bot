@@ -27,6 +27,8 @@ const RETRY_OPTIONS = {
   maxDelayMs: 10000
 };
 
+const WAIT_TIME_OUT = 120000
+
 const PING_PONG_STATUS = {
   PENDING: "pending",
   CONFIRMED: "confirmed",
@@ -38,5 +40,6 @@ module.exports = {
   CONTRACT_ABI,
   AWS_CONFIG,
   RETRY_OPTIONS,
-  PING_PONG_STATUS
+  PING_PONG_STATUS,
+  WAIT_TIME_OUT
 }; 

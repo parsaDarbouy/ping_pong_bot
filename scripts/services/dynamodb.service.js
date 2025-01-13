@@ -67,6 +67,31 @@ class DynamoDBService {
     await this.docClient.send(new UpdateCommand(params));
   }
 
+  async getNoncePrice(blockNumber) {
+    try {
+      const scanParams = {
+        TableName: AWS_CONFIG.tableName,
+        ProjectionExpression: "blockNumber, pongNonce, gasPrice",
+        FilterExpression: "blockNumber = :blockNumber",
+        ExpressionAttributeValues: {
+          ":blockNumber": blockNumber
+        }
+      };
+      
+      const response = await this.docClient.send(new ScanCommand(scanParams));
+      if (response.Items && response.Items.length > 0) {
+        const { pongNonce, gasPrice } = response.Items[0]; // Assuming blockNumber is unique
+        return { pongNonce, gasPrice };
+      }
+      
+      throw new Error(`Block number ${blockNumber} not found in the database.`);
+    } catch (error) {
+      console.error("Error querying DynamoDB for pongNonce and gas price:", error);
+      throw error;
+    }
+  }
+
+
   async getLastProcessedBlock() {
     try {
       const scanParams = {
