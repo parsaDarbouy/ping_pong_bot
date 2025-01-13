@@ -23,7 +23,6 @@ class PingPongListener {
 
   async handlePingEvent(event) {
     try {
-      console.log(event)
       await this.pingPongService.processPingEvent(event);
     } catch (error) {
       console.error("Error handling ping event:", error.message, {
@@ -69,27 +68,52 @@ async function handleShutdown(signal) {
 process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 process.on('SIGINT', () => handleShutdown('SIGINT'));
 
-async function main() {
-
-  const lastProcessedBlock = await dynamoDBService.getLastProcessedBlock();
-  console.log("Last processed block:", lastProcessedBlock);
-
-
-  
-  
-  const [signer] = await ethers.getSigners();
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-  // Get the ping events that were missed while the bot was asleep and handle them.
-  const historical_events = await contract.queryFilter("Ping", lastProcessedBlock + 1);
-  const preListenPromise = pre.pre_listen(historical_events);
-  
-  const listener = new PingPongListener(contract, signer);
-  // Store listener globally so it can be accessed during shutdown
-  global.listener = listener;
-  await listener.startListening();
-
+async function healthCheck(){
+  try{
+    await ethers.provider.getNetwork()
+    return true
+  } catch (error){
+    console.log(`Provider connection error:`, error.message)
+    return false
+  }
 }
+
+async function main() {
+  // Check provider health
+  const isHealthy = await healthCheck();
+  if (!isHealthy) {
+    console.error("Exiting due to provider health check failure.");
+    process.exit(1);
+  }
+
+  try {
+    // Retrieve the last processed block from the database
+    const lastProcessedBlock = await dynamoDBService.getLastProcessedBlock();
+    console.log("Last processed block:", lastProcessedBlock);
+
+    // Initialize the contract
+    const [signer] = await ethers.getSigners();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    // Fetch missed events and handle them
+    const historicalEvents = await contract.queryFilter(
+      "Ping",
+      lastProcessedBlock + 1
+    );
+    pre.pre_listen(historicalEvents);
+
+    // Start the listener
+    const listener = new PingPongListener(contract, signer);
+    global.listener = listener; // Save listener globally for potential cleanup
+    await listener.startListening();
+
+    console.log("Listener started successfully.");
+  } catch (error) {
+    console.error("An error occurred during execution:", error);
+    process.exit(1);
+  }
+}
+
 
 main()
   .then(() => process.exit(0))
