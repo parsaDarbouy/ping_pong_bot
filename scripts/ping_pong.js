@@ -23,7 +23,8 @@ class PingPongListener {
 
   async handlePingEvent(event) {
     try {
-      await this.pingPongService.processPingEvent(event, false);
+      console.log(event)
+      await this.pingPongService.processPingEvent(event);
     } catch (error) {
       console.error("Error handling ping event:", error.message, {
         blockNumber: event.blockNumber,

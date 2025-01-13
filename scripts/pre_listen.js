@@ -10,16 +10,16 @@ class PingPongProcessor {
     this.pingPongService = new PingPongService(contract, signer);
   }
 
-  async processPingEvent(event, checkPending = true) {
+  async processPingEvent(event) {
     try {
-      await this.pingPongService.processPingEvent(event, checkPending);
+      await this.pingPongService.processPingEvent(event);
     } catch (error) {
       console.error("Failed to process ping event:", error);
       throw error;
     }
   }
 
-  async checkPendingTransactions() {
+  async checkPendingTransactions(pongEvents) {
     try {
       const pendingEvents = await dynamoDBService.getPendingEvents();
       if (pendingEvents.length > 0) {
@@ -27,34 +27,26 @@ class PingPongProcessor {
         
         for (const event of pendingEvents) {
           // Check if Pong exists for this Ping
-          const filter = this.contract.filters.Pong();
-          const pongEvents = await this.contract.queryFilter(filter);
-          
-          const hasPong = pongEvents.some(pongEvent => 
-            pongEvent.args.txHash === event.pingTxHash
+          const matchedPong = pongEvents.find(pongEvent => 
+            (pongEvent.args.txHash === event.pingTxHash) && (pongEvent.address === CONTRACT_ADDRESS)
           );
+          
 
-          if (hasPong) {
+          if (matchedPong) {
             console.log(`Found existing Pong for Ping at block ${event.blockNumber}`);
-
+            console.log(`pong txHash for ${matchedPong.transactionHash}`)
             
-            const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+            const receipt = await ethers.provider.getTransactionReceipt(matchedPong.transactionHash);
             if (receipt.status) {
-              await dynamoDBService.updatePingPongStatus(
-                event.blockNumber, 
-                PING_PONG_STATUS.CONFIRMED
-              );
+              await dynamoDBService.updatePingPongTxHash(event.blockNumber, matchedPong.transactionHash, PING_PONG_STATUS.CONFIRMED);
               console.log(`Pong event is confirmed for ping at block ${event.blockNumber}! 🎉`);
             } else {
               // TODO: cancel the pong transaction and send pong again
               console.log(`Warning: Pong transaction is not confirmed for ping at block ${event.blockNumber}!`);
             }
-
-
-
           } else {
             console.log(`No Pong found for Ping at block ${event.blockNumber}, sending new Pong`);
-            await this.processPingEvent(event, false);
+            await this.processPingEvent(event);
           }
         }
       } else {
@@ -67,23 +59,32 @@ class PingPongProcessor {
   }
 
   async processHistoricalEvents(events) {
+    // Check if Pong exists for this Ping
+    const filter = this.contract.filters.Pong();
+    const pongEvents = await this.contract.queryFilter(filter);
+
     // First check pending transactions
-    await this.checkPendingTransactions();
+    await this.checkPendingTransactions(pongEvents);
 
     // TODO: GET BLOCK NUMBER FROM env variable, and if its less than last Process Block start from there or anyway start from env variable
     // CHECK how the TASK ask us to d
 
-    // Now the last processed block come from the main, to make sure it doesn't change while we are listenting.
-    // const lastProcessedBlock = await dynamoDBService.getLastProcessedBlock();
-    // console.log("Last processed block:", lastProcessedBlock);
 
-    // const events = await this.contract.queryFilter("Ping", lastProcessedBlock + 1);
-    
+
     if (events.length > 0) {
       console.log("\nFound", events.length, "historical Ping events");
-      
-      for (const event of events) {
-        await this.processPingEvent(event, false);
+
+
+      for (const pingEvent of events) {
+        const matchedPong = pongEvents.find(pongEvent => 
+          (pongEvent.args.txHash === pingEvent.transactionHash) && (pongEvent.address === CONTRACT_ADDRESS)
+        );
+        if (matchedPong) {
+          console.log("The pong exists for this ping!")
+          return;
+        } 
+
+        await this.processPingEvent(pingEvent, false);
       }
     } else {
       console.log("No historical Ping events found");
