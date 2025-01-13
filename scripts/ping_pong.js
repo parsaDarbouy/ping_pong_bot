@@ -100,7 +100,7 @@ async function main() {
       "Ping",
       lastProcessedBlock + 1
     );
-    pre.pre_listen(historicalEvents);
+    pre.pre_listen(contract,signer, historicalEvents);
 
     // Start the listener
     const listener = new PingPongListener(contract, signer);
