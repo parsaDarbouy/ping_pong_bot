@@ -17,3 +17,4 @@ node_modules
 ignition/deployments/chain-31337
 IAC/terraform.tfvars
 IAC/.terraform
+.DS_Store
