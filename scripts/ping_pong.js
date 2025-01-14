@@ -101,18 +101,17 @@ async function main() {
       lastProcessedBlock + 1
     );
 
-
-    // Start the listener
+    // Run pre_listen and listener concurrently
     const listener = new PingPongListener(contract, signer);
     global.listener = listener; // Save listener globally for potential cleanup
-    await listener.startListening();
-
-    // pre_listen is called after listening to make sure the listener is on
-    pre.pre_listen(contract,signer, historicalEvents);
+    const listenerPromise = listener.startListening();
+    const preListenPromise = pre.pre_listen(contract, signer, historicalEvents);
 
 
+    // Await both promises concurrently
+    await Promise.all([preListenPromise, listenerPromise]);
 
-    console.log("Listener started successfully.");
+    console.log("Both pre_listen and listener completed successfully.");
   } catch (error) {
     console.error("An error occurred during execution:", error);
     process.exit(1);
