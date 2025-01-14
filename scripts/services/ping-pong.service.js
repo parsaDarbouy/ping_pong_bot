@@ -1,12 +1,31 @@
 const dynamoDBService = require('./dynamodb.service');
 const { PING_PONG_STATUS, RETRY_OPTIONS, WAIT_TIME_OUT } = require('../config/constants');
 
+/**
+ * PingPongService handles ping-pong interactions with a smart contract,
+ * ensuring pings are processed and pongs are sent and confirmed correctly.
+ *
+ * @param {Object} contract - The smart contract instance for ping-pong operations.
+ * @param {Object} signer - The signer object to authorize transactions.
+ */
 class PingPongService {
   constructor(contract, signer) {
     this.contract = contract;
     this.signer = signer;
   }
 
+
+/**
+ * Processes a ping event by sending a pong transaction and updating the status in the database.
+ * Handles retries with exponential backoff and increases gas prices if necessary.
+ *
+ * @param {Object} event - The event object containing ping details.
+ *   - `blockNumber` {number} (optional): The block number of the ping event.
+ *   - `transactionHash` {string} (optional): The transaction hash of the ping event.
+ *   - `log` {Object} (optional): The log object containing `blockNumber` or `transactionHash`.
+ * @returns {Promise<Object>} - Returns the pong transaction object if successful.
+ * @throws {Error} - Throws an error if processing fails after the maximum retries.
+ */
 async processPingEvent(event) {
   const blockNumber = event.blockNumber || event.log?.blockNumber;
   const txHash =
@@ -21,14 +40,19 @@ async processPingEvent(event) {
   console.log("Processing Ping at block:", blockNumber);
   console.log("Ping transaction hash:", txHash);
 
-  await dynamoDBService.storePingPongEvent(
-    blockNumber,
-    txHash,
-    null,
-    null,
-    null,
-    PING_PONG_STATUS.PENDING
-  );
+  let { nonce, gasPrice } = await dynamoDBService.getNoncePrice(blockNumber)
+
+
+  if (nonce === null || gasPrice === null) {
+    await dynamoDBService.storePingPongEvent(
+      blockNumber,
+      txHash,
+      null,
+      null,
+      null,
+      PING_PONG_STATUS.PENDING
+    );
+  }
 
   const calculateBackoff = (attempt) => {
     const jitter = Math.random() * 1000;
@@ -37,9 +61,6 @@ async processPingEvent(event) {
       RETRY_OPTIONS.maxDelayMs
     );
   };
-
-  let nonce = null;
-  let gasPrice = null;
 
   for (let attempt = 0; attempt < RETRY_OPTIONS.maxRetries; attempt++) {
     try {
@@ -96,6 +117,15 @@ async processPingEvent(event) {
   );
 }
 
+  /**
+   * Verifies that a pong event has been successfully emitted by the smart contract.
+   * Checks the transaction receipt to confirm its status.
+   *
+   * @param {Object} tx - The pong transaction object.
+   *   - `hash` {string}: The hash of the pong transaction.
+   * @returns {Promise<void>} - Resolves if the pong event is successfully verified.
+   * @throws {Error} - Throws an error if the transaction is confirmed but no Pong event is found.
+   */
   async verifyPongEvent(tx) {
     const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
     if (receipt.status) {
