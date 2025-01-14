@@ -100,12 +100,17 @@ async function main() {
       "Ping",
       lastProcessedBlock + 1
     );
-    pre.pre_listen(contract,signer, historicalEvents);
+
 
     // Start the listener
     const listener = new PingPongListener(contract, signer);
     global.listener = listener; // Save listener globally for potential cleanup
     await listener.startListening();
+
+    // pre_listen is called after listening to make sure the listener is on
+    pre.pre_listen(contract,signer, historicalEvents);
+
+
 
     console.log("Listener started successfully.");
   } catch (error) {
