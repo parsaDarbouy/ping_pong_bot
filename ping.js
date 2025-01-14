@@ -25,7 +25,6 @@ const contractWithSigner = Contract.connect(signer);
 
 try {
     const result = await contractWithSigner.ping();
-    console.log(result)
     console.log("Ping:");
     await result.wait();
     console.log("Confirmed!");
