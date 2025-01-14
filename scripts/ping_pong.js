@@ -4,7 +4,18 @@ const { CONTRACT_ADDRESS, CONTRACT_ABI, RETRY_OPTIONS, PING_PONG_STATUS } = requ
 const dynamoDBService = require('./services/dynamodb.service');
 const PingPongService = require('./services/ping-pong.service');
 
+
+/**
+ * PingPongListener class.
+ * Listens for and processes "Ping" events emitted by the contract.
+ */
 class PingPongListener {
+  /**
+   * Creates a new PingPongListener instance.
+   * 
+   * @param {Object} contract - The smart contract instance.
+   * @param {Object} signer - The signer for interacting with the contract.
+   */
   constructor(contract, signer) {
     this.contract = contract;
     this.signer = signer;
@@ -12,6 +23,11 @@ class PingPongListener {
     this.isShuttingDown = false;
   }
 
+  /**
+   * Cleans up resources by removing all contract event listeners.
+   * 
+   * @returns {Promise<void>} Resolves when cleanup is complete.
+   */
   async cleanup() {
     if (this.isShuttingDown) return;
     this.isShuttingDown = true;
@@ -21,6 +37,12 @@ class PingPongListener {
     this.contract.removeAllListeners();
   }
 
+  /**
+   * Handles a "Ping" event emitted by the contract.
+   * 
+   * @param {Object} event - The event object containing details of the "Ping" event.
+   * @returns {Promise<void>} Resolves when the event is processed or logs an error on failure.
+   */
   async handlePingEvent(event) {
     try {
       await this.pingPongService.processPingEvent(event);
@@ -32,6 +54,12 @@ class PingPongListener {
     }
   }
 
+
+  /**
+   * Starts listening for "Ping" events emitted by the contract.
+   * 
+   * @returns {Promise<never>} A promise that never resolves to keep the listener active.
+   */
   async startListening() {
     console.log("Listening for Ping events...👂");
     this.contract.on("Ping", async (event) => {
@@ -46,6 +74,13 @@ class PingPongListener {
   }
 }
 
+
+/**
+ * Gracefully handles application shutdown by removing event listeners and 
+ * performing cleanup tasks.
+ * 
+ * @param {string} signal - The shutdown signal (e.g., 'SIGTERM', 'SIGINT').
+ */
 async function handleShutdown(signal) {
   console.log(`Received ${signal}. Performing graceful shutdown...`);
   const timeout = setTimeout(() => {
@@ -68,6 +103,12 @@ async function handleShutdown(signal) {
 process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 process.on('SIGINT', () => handleShutdown('SIGINT'));
 
+
+/**
+ * Verifies the health of the blockchain provider by attempting to retrieve the network.
+ * 
+ * @returns {Promise<boolean>} True if the provider is healthy; otherwise, false.
+ */
 async function healthCheck(){
   try{
     await ethers.provider.getNetwork()
@@ -78,6 +119,11 @@ async function healthCheck(){
   }
 }
 
+
+/**
+ * Main entry point of the application.
+ * Initializes the contract, fetches historical events, and starts listening for new events.
+ */
 async function main() {
   // Check provider health
   const isHealthy = await healthCheck();
