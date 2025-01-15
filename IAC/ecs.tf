@@ -11,8 +11,8 @@ resource "aws_ecs_task_definition" "ping_pong" {
   family                   = "eth-ping-pong"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = 2048
-  memory                   = 4096
+  cpu                      = 512
+  memory                   = 1024
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
   runtime_platform {
@@ -43,6 +43,10 @@ resource "aws_ecs_task_definition" "ping_pong" {
           name  = "AWS_REGION"
           value = var.aws_region
         },
+        {
+          name = "wallet_Address"
+          value = var.wallet_Address
+        }
 
       ]
       secrets = [
