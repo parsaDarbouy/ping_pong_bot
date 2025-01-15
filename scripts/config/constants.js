@@ -1,4 +1,4 @@
-const CONTRACT_ADDRESS = "0xf108Bc7795bc897C4EC158845eDD2B1BafD06f47";
+const CONTRACT_ADDRESS = "0xA7F42ff7433cB268dD7D59be62b00c30dEd28d3D";
 const CONTRACT_ABI = [
   {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
   {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"pinger","type":"address"}],"name":"NewPinger","type":"event"},
@@ -12,7 +12,7 @@ const CONTRACT_ABI = [
 
 const AWS_CONFIG = {
   region: "us-east-1",
-  tableName: "ping-pong"
+  tableName: "ping-pong-d3D"
 };
 
 // const PROVIDERS = [ remember module export
