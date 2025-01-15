@@ -39,10 +39,30 @@ class PingPongProcessor {
       console.log(`Found ${pendingEvents.length} pending transactions to verify.`);
 
       for (const event of pendingEvents) {
-        const matchedPong = pongEvents.find(
-          (pongEvent) =>
-            pongEvent.args.txHash === event.pingTxHash &&
-            pongEvent.address === CONTRACT_ADDRESS
+        
+        const matchedPong = await Promise.all(
+          pongEvents.map(async (pongEvent) => {
+            // Get the transaction hash from the event
+            const txHash = pongEvent.transactionHash;
+        
+            // Fetch transaction details using the provider
+            const transaction = await ethers.provider.getTransaction(txHash);
+        
+            // Access the sender's address
+            const senderAddress = transaction.from;
+        
+            // Add senderAddress to the pongEvent for comparison
+            return {
+              ...pongEvent,
+              senderAddress,
+            };
+          })
+        ).then((eventsWithSenders) =>
+          eventsWithSenders.find(
+            (pongEvent) =>
+              pongEvent.args.txHash === event.pingTxHash &&
+              pongEvent.senderAddress === process.env.wallet_Address
+          )
         );
 
         if (matchedPong) {
@@ -75,10 +95,10 @@ class PingPongProcessor {
    * Processes historical Ping events and sends Pong transactions if necessary.
    * @param {Array} events - Array of historical Ping events.
    */
-  async processHistoricalEvents(events) {
+  async processHistoricalEvents(events, lastProcessedBlock) {
     try {
       const pongFilter = this.contract.filters.Pong();
-      const pongEvents = await this.contract.queryFilter(pongFilter);
+      const pongEvents = await this.contract.queryFilter(pongFilter ,lastProcessedBlock);
 
       // Verify and process pending transactions
       await this.checkPendingTransactions(pongEvents);
@@ -91,14 +111,36 @@ class PingPongProcessor {
       console.log(`\nFound ${events.length} historical Ping events.`);
 
       for (const pingEvent of events) {
-        const matchedPong = pongEvents.find(
-          (pongEvent) =>
-            pongEvent.args.txHash === pingEvent.transactionHash &&
-            pongEvent.address === CONTRACT_ADDRESS
+
+        const matchedPong = await Promise.all(
+          pongEvents.map(async (pongEvent) => {
+            // Get the transaction hash from the event
+            const txHash = pongEvent.transactionHash;
+        
+            // Fetch transaction details using the provider
+            const transaction = await ethers.provider.getTransaction(txHash);
+        
+            // Access the sender's address
+            const senderAddress = transaction.from;
+        
+            // Add senderAddress to the pongEvent for comparison
+            return {
+              ...pongEvent,
+              senderAddress,
+            };
+          })
+        ).then((eventsWithSenders) =>
+          eventsWithSenders.find(
+            (pongEvent) =>
+              pongEvent.args.txHash === pingEvent.pingTxHash &&
+              pongEvent.senderAddress === process.env.wallet_Address
+          )
         );
 
         if (matchedPong) {
           console.log(`Pong already exists for Ping event with transaction hash: ${pingEvent.transactionHash}`);
+          // console.log(matchedPong)
+          console.log(`its pong has transaction hash of: ${matchedPong}`)
           continue;
         }
 
@@ -117,9 +159,9 @@ class PingPongProcessor {
  * @param {Object} signer - The signer instance for sending transactions.
  * @param {Array} historicalEvents - Array of historical Ping events to process.
  */
-async function pre_listen(contract, signer, historicalEvents) {
+async function pre_listen(contract, signer, historicalEvents,lastProcessedBlock) {
   const processor = new PingPongProcessor(contract, signer);
-  await processor.processHistoricalEvents(historicalEvents);
+  await processor.processHistoricalEvents(historicalEvents, lastProcessedBlock);
 }
 
 module.exports = {

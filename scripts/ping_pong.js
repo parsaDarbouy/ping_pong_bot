@@ -151,7 +151,7 @@ async function main() {
     const listener = new PingPongListener(contract, signer);
     global.listener = listener; // Save listener globally for potential cleanup
     const listenerPromise = listener.startListening();
-    const preListenPromise = pre.pre_listen(contract, signer, historicalEvents);
+    const preListenPromise = pre.pre_listen(contract, signer, historicalEvents, lastProcessedBlock);
 
 
     // Await both promises concurrently

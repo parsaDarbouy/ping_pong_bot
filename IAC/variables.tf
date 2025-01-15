@@ -32,3 +32,9 @@ variable "vpc_cidr_block" {
   type        = string
   sensitive   = false
 }
+
+variable "wallet_Address" {
+  description = "wallet address"
+  type        = string
+  sensitive   = true
+}
